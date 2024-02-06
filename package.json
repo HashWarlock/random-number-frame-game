@@ -16,8 +16,7 @@
   },
   "dependencies": {
     "@coinbase/onchainkit": "^0.4.5",
-    "@phala/fn": "^0.2.13",
-    "@phala/sidevm-env": "^1.0.1",
+    "@phala/fn": "~0.2.13",
     "viem": "^2.5.0"
   }
 }

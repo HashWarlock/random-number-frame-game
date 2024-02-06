@@ -38,8 +38,6 @@ export class Response {
         this.status = 200;
         this.body = body;
         this.headers = {
-            'Content-Type': 'text/html; charset=UTF-8',
-            'Access-Control-Allow-Origin': '*',
             ...options?.headers
         }
     }
