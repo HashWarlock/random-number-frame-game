@@ -9,6 +9,7 @@
     "resolveJsonModule": true
   },
   "include": [
-    "node_modules/@phala/sidevm-env"
+    "node_modules/@phala/sidevm-env",
+    "node_modules/@coinbase/onchainkit/dist/types/"
   ]
 }

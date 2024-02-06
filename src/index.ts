@@ -1,5 +1,7 @@
 import "@phala/sidevm-env";
-import { FrameRequest, getFrameMetadata, getFrameMessage, getFrameHtmlResponse } from '@coinbase/onchainkit'
+import { FrameRequest } from '@coinbase/onchainkit'
+import { getFrameMetadata } from '@coinbase/onchainkit/dist/lib/core/getFrameMetadata'
+import { getFrameMessage } from '@coinbase/onchainkit/dist/lib/core/getFrameMessage'
 import { Request, Response, renderOpenGraph, route } from './frameSupport'
 
 const BASE_URL = 'https://frames.phatfn.xyz'
@@ -14,6 +16,7 @@ async function GET(req: Request): Promise<Response> {
         ],
         image: `https://framehub.4everland.store/PhatFrame.png`,
         post_url: BASE_URL + req.path + `?key=${secret[0]}`,
+        input: {text: 'Guess a Number'}
     });
 
     return new Response(renderOpenGraph({
@@ -33,25 +36,45 @@ async function GET(req: Request): Promise<Response> {
 }
 
 async function getResponse(req: Request): Promise<Response> {
-    let accountAddress: string | undefined = '';
+    let username: string | undefined = '';
+    let answer: string | undefined = '';
+    let buttonLabel: string | undefined = '';
     const secret = req.queries?.key ?? ''
     const apiKey = req.secret?.apiKey ?? 'NEYNAR_API';
+    const randomNumber = req.secret?.randomNumber;
 
     const body: FrameRequest = await req.json();
 
     const { isValid, message } = await getFrameMessage(body, { neynarApiKey: `${apiKey}`});
 
     if (isValid) {
-      accountAddress = message.interactor.verified_accounts[0];
+      username = message.raw.action.interactor.username ?? `fc_id: ${message.raw.action.interactor.fid}`;
+      answer = message.input;
+      const answerNum = Number(answer);
+      if (!isNaN(answerNum)) {
+        buttonLabel = `Input NaN ${username}`
+      } else if (!isNaN(<number>randomNumber)) {
+          buttonLabel = `Random Number Not Set`
+      } else if (answer == randomNumber) {
+          buttonLabel = `Correct! ${username}`;
+      } else { // @ts-ignore
+          if (answer > randomNumber) {
+              // TODO for SVG generation
+          } else {
+              // TODO for SVG Generation
+          }
+          buttonLabel = `Incorrect! ${username}`;
+      }
     }
     const frameMetadata = getFrameMetadata({
         buttons: [
             {
-                label: `Phat Hello to ${accountAddress}`,
+                label: `${buttonLabel}`,
             },
         ],
         image: 'https://framehub.4everland.store/FrameHub.png',
         post_url: BASE_URL + req.path + `?key=${secret[0]}`,
+        input: { text: answer },
     });
 
     return new Response(renderOpenGraph({

@@ -15,9 +15,9 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
-    "@coinbase/onchainkit": "^0.4.1",
+    "@coinbase/onchainkit": "^0.4.5",
     "@phala/fn": "^0.2.13",
     "@phala/sidevm-env": "^1.0.1",
-    "viem": "^1.19.3"
+    "viem": "^2.5.0"
   }
 }
