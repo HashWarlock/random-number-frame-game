@@ -74,7 +74,8 @@ async function getResponse(req: Request): Promise<Response> {
             } else if (answerNum == Number(randomNumber)) {
                 buttonLabel = `Correct! ${username}`;
                 svgGuessText = `${username}: Guessed ${answerNum}. Winner! Airdrop 0.01ETH`
-                // await relayGas(`${syndicateAccount}`, '0xE69eBD3F7734a30E338E78F88947cc2360F86d03', '10000000000000000')
+                // TEST: Update to Account Address with Check After Fix
+                await relayGas(`${syndicateAccount}`, '0xE69eBD3F7734a30E338E78F88947cc2360F86d03', '10000000000000000')
                 await insertGuess(`${supabaseApiKey}`, svgGuessText, true)
             } else { // @ts-ignore
                 if (answerNum > Number(randomNumber)) {
@@ -87,7 +88,7 @@ async function getResponse(req: Request): Promise<Response> {
             }
             imageRender = `${imageRender}?guess=${svgGuessText}`;
         } else {
-            imageRender = `${imageRender}?getHistory=true`;
+            imageRender = `${imageRender}?key=${secret[0]}&getHistory=true`;
         }
     }
     const frameMetadata = getFrameMetadata({
@@ -123,8 +124,7 @@ async function getResponse(req: Request): Promise<Response> {
 async function createSVGWithShapesAndNumber(req: Request): Promise<Response> {
     const guess = req.queries?.guess ?? 'No Guess Detected';
     const svg =
-    `
-    <svg width="1600" height="800" viewBox="0 0 1600 800" xmlns="http://www.w3.org/2000/svg">
+    `<svg width="1600" height="800" viewBox="0 0 1600 800" xmlns="http://www.w3.org/2000/svg">
         <path id="Path" fill="#008000" stroke="none" d="M 0 0 L 1600 0 L 1600 800 L 0 800 Z"/>
         <path id="path1" fill="#ffffff" stroke="none" d="M 675 150 C 675 191.421387 641.421387 225 600 225 C 558.578613 225 525 191.421387 525 150 C 525 108.578613 558.578613 75 600 75 C 641.421387 75 675 108.578613 675 150 Z"/>
         <path id="path2" fill="#ffffff" stroke="none" d="M 725 75 L 875 75 L 875 225 L 725 225 Z"/>
@@ -162,22 +162,20 @@ async function getGuessHistory(req: Request): Promise<Response> {
     const columnWidth = width / columns;
     const rowHeight = 20; // Adjust row height for readability
     const fontSize = 16; // Adjust font size for readability
+    const rowPad = columnWidth / 8;
 
-    let svgContent = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-    <path id="Path" fill="#008000" stroke="none" d="M 0 0 L 1600 0 L 1600 800 L 0 800 Z"/>
-    `;
+    let svgContent = `<svg width="${width}" height="${height}" viewBox="0 0 1600 800" xmlns="http://www.w3.org/2000/svg">\n\t<path id="Path" fill="#008000" stroke="none" d="M 0 0 L 1600 0 L 1600 800 L 0 800 Z"/>\n`;
 
     let index = 0;
     const guessHistoryLength = guessHistoryArray.length;
-    for (let i = 0; i < rows; i++) {
-        for (let j = 0; j < columns; j++) {
+    for (let i = 0; i < columns; i++) {
+        for (let j = 1; j < rows; j++) {
             if (index < guessHistoryLength) {
                 let guessHistoryText = guessHistoryArray[index];
                 console.log(guessHistoryText);
-                const x = j * columnWidth;
-                const y = (i + 1) * rowHeight;
-                svgContent += `<text id="Text${index}" x="${x}" y="${y}" fill="#ffffff" font-size="${fontSize}" font-weight="bold" >${guessHistoryText.guess_text}</text>
-                `;
+                const x = i * columnWidth + rowPad;
+                const y = (j + 1) * rowHeight;
+                svgContent += `\t<text id="Text${index}" x="${x}" y="${y}" fill="#ffffff" font-size="${fontSize}" font-weight="bold" >${guessHistoryText.guess_text}</text>\n`;
                 index++;
             } else {
                 break;
