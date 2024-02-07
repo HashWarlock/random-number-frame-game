@@ -46,8 +46,8 @@ async function GET(req: Request): Promise<Response> {
 
 async function getResponse(req: Request): Promise<Response> {
     let username: string | undefined = '';
-    let answer: string | undefined = '';
-    let buttonLabel: string | undefined = '';
+    let answer: string | undefined = 'Guess a Number';
+    let buttonLabel: string | undefined = 'Guess a Number';
     let imageRender = `${BASE_URL}${req.path}`;
     const secret = req.queries?.key ?? ''
     const apiKey = req.secret?.apiKey ?? 'NEYNAR_API';
@@ -87,7 +87,7 @@ async function getResponse(req: Request): Promise<Response> {
             }
             imageRender = `${imageRender}?guess=${svgGuessText}`;
         } else {
-            imageRender = `${imageRender}?key=${secret[0]}&getHistory=true`;
+            imageRender = `${imageRender}?getHistory=true`;
         }
     }
     const frameMetadata = getFrameMetadata({
@@ -164,10 +164,7 @@ async function getGuessHistory(req: Request): Promise<Response> {
     const fontSize = 16; // Adjust font size for readability
 
     let svgContent = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-    `;
-    svgContent += `<style>
-    .guess-text { font: ${fontSize}px sans-serif; }
-    </style>
+    <path id="Path" fill="#008000" stroke="none" d="M 0 0 L 1600 0 L 1600 800 L 0 800 Z"/>
     `;
 
     let index = 0;
@@ -179,7 +176,7 @@ async function getGuessHistory(req: Request): Promise<Response> {
                 console.log(guessHistoryText);
                 const x = j * columnWidth;
                 const y = (i + 1) * rowHeight;
-                svgContent += `<text x="${x}" y="${y}" class="guess-text">${guessHistoryText.guess_text}</text>
+                svgContent += `<text id="Text${index}" x="${x}" y="${y}" fill="#ffffff" font-size="${fontSize}" font-weight="bold" >${guessHistoryText.guess_text}</text>
                 `;
                 index++;
             } else {
