@@ -6,8 +6,10 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "npx @phala/fn build --experimentalAsync",
-    "publish": "npx @phala/fn build --experimentalAsync && ts-node scripts/publish.ts"
+    "build": "phat-fn build --experimentalAsync",
+    "test": "tsx src/test.ts",
+    "lint": "tsc --noEmit",
+    "publish": "phat-fn build --experimentalAsync && tsx scripts/publish.ts"
   },
   "devDependencies": {
     "@phala/fn": "~0.2.14",

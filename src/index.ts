@@ -152,7 +152,8 @@ async function getGuessHistory(req: Request): Promise<Response> {
         options
     );
     // @ts-ignore
-    const guessHistoryResponseJson = await guessHistoryResponse.body();
+    const guessHistoryResponseJson = await guessHistoryResponse.json();
+    console.log(guessHistoryResponseJson)
     const guessHistoryArray = guessHistoryResponseJson;
     const width = 1600;
     const height = 800;
@@ -175,6 +176,7 @@ async function getGuessHistory(req: Request): Promise<Response> {
         for (let j = 0; j < columns; j++) {
             if (index < guessHistoryLength) {
                 let guessHistoryText = guessHistoryArray[index];
+                console.log(guessHistoryText);
                 const x = j * columnWidth;
                 const y = (i + 1) * rowHeight;
                 svgContent += `<text x="${x}" y="${y}" class="guess-text">${guessHistoryText.guess_text}</text>
