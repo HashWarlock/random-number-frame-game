@@ -2,18 +2,25 @@ import { FrameRequest } from '@coinbase/onchainkit'
 import { getFrameMetadata } from '@coinbase/onchainkit/dist/lib/core/getFrameMetadata'
 import { getFrameMessage } from '@coinbase/onchainkit/dist/lib/core/getFrameMessage'
 import {Request, Response, renderOpenGraph, route} from './frameSupport'
+import {relayGas} from "./payout";
+import {insertGuess} from "./history";
 
 const BASE_URL = 'https://frames.phatfn.xyz'
 
 async function GET(req: Request): Promise<Response> {
     if (req.queries?.guess) {
         return createSVGWithShapesAndNumber(req);
+    } else if (req.queries?.getHistory) {
+        return getGuessHistory(req);
     }
     const secret = req.queries?.key ?? '';
     const frameMetadata = getFrameMetadata({
         buttons: [
             {
-                label: `FrameHub Template\nClick Here!`,
+                label: `Guess a Number`,
+            },
+            {
+                label: `View History`,
             },
         ],
         image: `https://framehub.4everland.store/PhatFrame.png`,
@@ -41,8 +48,11 @@ async function getResponse(req: Request): Promise<Response> {
     let username: string | undefined = '';
     let answer: string | undefined = '';
     let buttonLabel: string | undefined = '';
+    let imageRender = `${BASE_URL}${req.path}`;
     const secret = req.queries?.key ?? ''
     const apiKey = req.secret?.apiKey ?? 'NEYNAR_API';
+    const syndicateAccount = req.secret?.syndicateAccount ?? '';
+    const supabaseApiKey = req.secret?.supabaseApiKey ?? '';
     const randomNumber = req.secret?.randomNumber;
     let svgGuessText = '';
 
@@ -51,34 +61,45 @@ async function getResponse(req: Request): Promise<Response> {
     const { isValid, message } = await getFrameMessage(body, { neynarApiKey: `${apiKey}`});
 
     if (isValid) {
-      username = message.raw.action.interactor.username ?? `fc_id: ${message.raw.action.interactor.fid}`;
-      answer = message.input;
-      const answerNum = Number(answer);
-      if (isNaN(answerNum)) {
-          buttonLabel = `Input NaN ${username}`
-          svgGuessText = `${username}: Input NaN`
-      } else if (isNaN(Number(randomNumber))){
-          buttonLabel = `Random Number Not Set`
-          svgGuessText = `${username}: No Random Number Set`
-      } else if (answerNum == Number(randomNumber)) {
-          buttonLabel = `Correct! ${username}`;
-          svgGuessText = `${username}: Winner! Guessed ${answerNum}`
-      } else { // @ts-ignore
-          if (answerNum > Number(randomNumber)) {
-              svgGuessText = `${username}: Guessed ${answerNum}. Too High!`
-          } else {
-              svgGuessText = `${username}: Guessed ${answerNum}. Too Low!`
-          }
-          buttonLabel = `Incorrect! ${username}`;
-      }
+        if (message.button == 1) {
+            username = message.raw.action.interactor.username ?? `fc_id: ${message.raw.action.interactor.fid}`;
+            answer = message.input;
+            const answerNum = Number(answer);
+            if (isNaN(answerNum)) {
+                buttonLabel = `Input NaN. Guess Again`
+                svgGuessText = `${username}: Input NaN`
+            } else if (isNaN(Number(randomNumber))) {
+                buttonLabel = `No Random Number Set`
+                svgGuessText = `${username}: No Random Number Set`
+            } else if (answerNum == Number(randomNumber)) {
+                buttonLabel = `Correct! ${username}`;
+                svgGuessText = `${username}: Guessed ${answerNum}. Winner! Airdrop 0.01ETH`
+                // await relayGas(`${syndicateAccount}`, '0xE69eBD3F7734a30E338E78F88947cc2360F86d03', '10000000000000000')
+                await insertGuess(`${supabaseApiKey}`, svgGuessText, true)
+            } else { // @ts-ignore
+                if (answerNum > Number(randomNumber)) {
+                    svgGuessText = `${username}: Guessed ${answerNum}. Too High!`
+                } else {
+                    svgGuessText = `${username}: Guessed ${answerNum}. Too Low!`
+                }
+                buttonLabel = `Incorrect! Guess Again`;
+                await insertGuess(`${supabaseApiKey}`, svgGuessText, false)
+            }
+            imageRender = `${imageRender}?guess=${svgGuessText}`;
+        } else {
+            imageRender = `${imageRender}?key=${secret[0]}&getHistory=true`;
+        }
     }
     const frameMetadata = getFrameMetadata({
         buttons: [
             {
                 label: `${buttonLabel}`,
             },
+            {
+                label: 'View History',
+            },
         ],
-        image: [`${BASE_URL}${req.path}?guess=${svgGuessText}`],
+        image: [`${imageRender}`],
         post_url: BASE_URL + req.path + `?key=${secret[0]}`,
         input: { text: answer },
     });
@@ -89,7 +110,7 @@ async function getResponse(req: Request): Promise<Response> {
             openGraph: {
                 title: BASE_URL + req.path,
                 description: 'FrameHub',
-                images: [`${BASE_URL}${req.path}?guess=${svgGuessText}`],
+                images: [`${imageRender}`],
             },
             other: {
                 ...frameMetadata,
@@ -116,6 +137,60 @@ async function createSVGWithShapesAndNumber(req: Request): Promise<Response> {
 
     return new Response(svg, { headers: { 'Content-Type': 'image/svg+xml;' } });
 }
+
+async function getGuessHistory(req: Request): Promise<Response> {
+    const supabaseApiKey = req.secret?.supabaseApiKey ?? '';
+    const options = {
+        method: 'GET',
+        headers: {
+            'apikey': `${supabaseApiKey}`,
+            'Authorization': `Bearer ${supabaseApiKey}`,
+        },
+    };
+    const guessHistoryResponse = await fetch(
+        'https://hkmyqdjuazltuwcqkgnt.supabase.co/rest/v1/RandomNumberGuesses?select=*',
+        options
+    );
+    // @ts-ignore
+    const guessHistoryResponseJson = await guessHistoryResponse.body();
+    const guessHistoryArray = guessHistoryResponseJson;
+    const width = 1600;
+    const height = 800;
+    const columns = 4;
+    const rows = 250;
+    const columnWidth = width / columns;
+    const rowHeight = 20; // Adjust row height for readability
+    const fontSize = 16; // Adjust font size for readability
+
+    let svgContent = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+    `;
+    svgContent += `<style>
+    .guess-text { font: ${fontSize}px sans-serif; }
+    </style>
+    `;
+
+    let index = 0;
+    const guessHistoryLength = guessHistoryArray.length;
+    for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < columns; j++) {
+            if (index < guessHistoryLength) {
+                let guessHistoryText = guessHistoryArray[index];
+                const x = j * columnWidth;
+                const y = (i + 1) * rowHeight;
+                svgContent += `<text x="${x}" y="${y}" class="guess-text">${guessHistoryText.guess_text}</text>
+                `;
+                index++;
+            } else {
+                break;
+            }
+        }
+    }
+
+    svgContent += '</svg>';
+    console.log(svgContent);
+    return new Response(svgContent, { headers: { 'Content-Type': 'image/svg+xml;' } });
+}
+
 
 async function POST(req: any): Promise<Response> {
     return getResponse(req);
