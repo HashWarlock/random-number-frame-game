@@ -75,7 +75,7 @@ async function getResponse(req: Request): Promise<Response> {
                 buttonLabel = `Correct! ${username}`;
                 svgGuessText = `${username}: Guessed ${answerNum}. Winner! Airdrop 0.01ETH`
                 // TEST: Update to Account Address with Check After Fix
-                await relayGas(`${syndicateAccount}`, '0xE69eBD3F7734a30E338E78F88947cc2360F86d03', '10000000000000000')
+                await relayGas(`${syndicateAccount}`, '0xE69eBD3F7734a30E338E78F88947cc2360F86d03')
                 await insertGuess(`${supabaseApiKey}`, svgGuessText, true)
             } else { // @ts-ignore
                 if (answerNum > Number(randomNumber)) {

@@ -1,4 +1,4 @@
-export async function relayGas(syndicateAccessToken: string, recipientAddress: string, value: string) {
+export async function relayGas(syndicateAccessToken: string, recipientAddress: string) {
     const options = {
         method: 'POST',
         headers: {
@@ -8,22 +8,17 @@ export async function relayGas(syndicateAccessToken: string, recipientAddress: s
         body:
             `{
               "projectId": "61ea8e4f-a202-48b6-9b3e-552dc560c852",
-              "contractAddress": "0xacd6f8c64c902a8038f78fea2c939e2457e3e064",
+              "contractAddress": "0x6E45e26D546E25F13b36CE900c4758EE59E78185",
               "chainId": 84532,
-              "functionSignature": "airdropERC20(address _tokenAddress, address _tokenOwner, (address recipient, uint256 amount)[] _contents)",
+              "functionSignature": "withdraw(address to)",
               "args": {
-                  "_tokenAddress": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-                  "_tokenOwner": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-                  "_contents": [
-                    { "recipient": "${recipientAddress}", "amount": "${value}" }
-                  ],
-              },
-              "value": "${value}"
+                  "to": "${recipientAddress}",
+              }
             }`,
     };
 
     const relayGasResponse = await fetch(
-        'https://staging-api.syndicate.io/transact/sendTransactionWithValue',
+        'https://api.syndicate.io/transact/sendTransaction',
         options
     );
 
