@@ -15,3 +15,26 @@ export async function insertGuess(supabaseApiKey: string, guessText: string, win
         options
     );
 }
+
+export async function getGameStatus(supabaseApiKey: string) {
+    const options = {
+        method: 'GET',
+        headers: {
+            'apikey': `${supabaseApiKey}`,
+            'Authorization': `Bearer ${supabaseApiKey}`,
+        },
+    };
+    const gameStatusResponse = await fetch(
+        'https://hkmyqdjuazltuwcqkgnt.supabase.co/rest/v1/RandomNumberGuesses?winner=eq.true&select=*',
+        options
+    );
+    // @ts-ignore
+    const gameStatusResponseJson = await gameStatusResponse.json();
+    console.log(gameStatusResponseJson);
+    const gameStatusArray = gameStatusResponseJson;
+    if (gameStatusArray.length) {
+        return gameStatusArray[0].winner
+    } else {
+        return false;
+    }
+}
