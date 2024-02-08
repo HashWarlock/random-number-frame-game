@@ -83,7 +83,7 @@ async function getResponse(req: Request): Promise<Response> {
             const answerNum = Number(answer);
             if (!evmAccount) {
                 buttonLabel = 'Missing EVM Account';
-                svgGuessText = '';
+                svgGuessText = `${username} Missing EVM Account`;
             } else if (isNaN(answerNum)) {
                 buttonLabel = 'Input NaN. Guess Again';
                 svgGuessText = `${username}: Input NaN`;
