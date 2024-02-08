@@ -92,7 +92,7 @@ async function getResponse(req: Request): Promise<Response> {
                 svgGuessText = `${username}: No Random Number Set`;
             } else if (answerNum == Number(randomNumber)) {
                 buttonLabel = `Correct! ${username}`;
-                svgGuessText = `${username}: Guessed ${answerNum}. Winner! Airdrop 0.01ETH`;
+                svgGuessText = `${username}: Guessed ${answerNum}. Winner! ETH Airdrop Sent!`;
                 // TEST: Update to Account Address with Check After Fix
                 await relayGas(`${syndicateAccount}`, `${evmAccount}`);
                 await insertGuess(`${supabaseApiKey}`, svgGuessText, true);
