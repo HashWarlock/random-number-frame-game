@@ -1,4 +1,4 @@
-export async function insertGuess(supabaseApiKey: string, username: string, guessText: string, isWinner: boolean) {
+export async function insertGuess(supabaseApiKey: string, username: string, guessText: string, isWinner: boolean, gameId: string) {
   const endTime = new Date();
   const formatEndTime = formatToTime(endTime.getUTCHours()) + ":" + formatToTime(endTime.getUTCMinutes()) + ":" + formatToTime(endTime.getUTCSeconds());
   console.log(formatEndTime);
@@ -10,7 +10,7 @@ export async function insertGuess(supabaseApiKey: string, username: string, gues
       'Content-Type': 'application/json',
       'Prefer': 'return=minimal'
     },
-    body: `{"guess_text": "${guessText}", "is_winner": ${isWinner}, "created_at": "${formatEndTime}", "username": "${username}"}`,
+    body: `{"guess": "${guessText}", "is_winner": ${isWinner}, "created_at": "${formatEndTime}", "username": "${username}", "game_id": "${gameId}"}`,
   };
 
   await fetch(
@@ -35,11 +35,11 @@ export async function updateGameStatus(supabaseApiKey: string, gameId: string, a
       'Content-Type': 'application/json',
       'Prefer': 'return=minimal'
     },
-    body: `{"active": "${active}", "ended_at": ${formatEndTime}}`,
+    body: `{"active": ${active}, "ended_at": "${formatEndTime}"}`,
   };
 
   await fetch(
-    `https://hkmyqdjuazltuwcqkgnt.supabase.co/rest/v1/GuessANumberGames?game_id=${gameId}`,
+    `https://hkmyqdjuazltuwcqkgnt.supabase.co/rest/v1/GuessANumberGames?id=eq.${gameId}`,
     options
   );
 }
@@ -60,7 +60,7 @@ export async function updatePlayerCount(supabaseApiKey: string, gameId: string) 
   };
 
   await fetch(
-    `https://hkmyqdjuazltuwcqkgnt.supabase.co/rest/v1/GuessANumberGames?game_id=eq.${gameId}`,
+    `https://hkmyqdjuazltuwcqkgnt.supabase.co/rest/v1/GuessANumberGames?id=eq.${gameId}`,
     options
   );
 }
@@ -101,7 +101,7 @@ export async function getGuessHistory(supabaseApiKey: unknown, gameId: string[] 
   return guessHistoryResponseJson;
 }
 
-export async function getPlayerGuessHistory(supabaseApiKey: unknown, gameId: string[] | string, username: string) {
+export async function getPlayerGuessHistory(supabaseApiKey: unknown, gameId: string, username: string) {
   const options = {
     method: 'GET',
     headers: {
@@ -110,7 +110,7 @@ export async function getPlayerGuessHistory(supabaseApiKey: unknown, gameId: str
     },
   };
   const playerGuessHistoryResponse = await fetch(
-    `https://hkmyqdjuazltuwcqkgnt.supabase.co/rest/v1/GuessANumberGuesses?limit=9&game_id=eq.${gameId}&username=eq.${username}`,
+    `https://hkmyqdjuazltuwcqkgnt.supabase.co/rest/v1/GuessANumberGuesses?game_id=eq.${gameId}&username=eq.${username}`,
     options
   );
   // @ts-ignore

@@ -3,7 +3,7 @@ import { getFrameMetadata } from '@coinbase/onchainkit/dist/lib/core/getFrameMet
 import { getFrameMessage } from '@coinbase/onchainkit/dist/lib/core/getFrameMessage'
 import {Request, Response, renderOpenGraph, route} from './frameSupport'
 import {homeFrameSVG, getGuessHistorySVG} from "./utils/getImage";
-import {getPlayerGuessHistory, insertGuess, updatePlayerCount} from "./db/supabase";
+import {getGameStatus, getPlayerGuessHistory, insertGuess, updateGameStatus, updatePlayerCount} from "./db/supabase";
 
 const BASE_URL = 'https://frames.phatfn.xyz'
 
@@ -19,6 +19,7 @@ async function GET(req: Request): Promise<Response> {
 
 async function getHomeFrame(req: Request): Promise<Response> {
     const secret = req.queries?.key ?? '';
+    const gameId = req.queries?.gameId ?? ''
     let homeImage = '?home=true';
     const frameMetadata = getFrameMetadata({
         buttons: [
@@ -27,8 +28,7 @@ async function getHomeFrame(req: Request): Promise<Response> {
             },
         ],
         image: BASE_URL + req.path + homeImage,
-        post_url: BASE_URL + req.path + `?key=${secret[0]}`,
-        input: {text: 'Guess a Number'}
+        post_url: BASE_URL + req.path + `?key=${secret[0]}&gameId=${gameId[0]}&play=${Math.random()}`,
     });
 
     return new Response(renderOpenGraph({
@@ -52,19 +52,20 @@ async function getResponse(req: Request): Promise<Response> {
     let evmAccount: string | undefined = '';
     let answer: string | undefined = 'Guess a Number';
     const secret = req.queries?.key ?? '';
-    const imageRender = `${BASE_URL}${req.path}?key=${secret[0]}&getHistory=${Math.random()}`;
     const gameId = req.queries?.gameId;
+    const imageRender = `${BASE_URL}${req.path}?key=${secret[0]}&gameId=${gameId[0]}&getHistory=${Math.random()}`;
     const apiKey = req.secret?.apiKey ?? 'NEYNAR_API';
     const syndicateAccount = req.secret?.syndicateAccount ?? '';
     const supabaseApiKey = req.secret?.supabaseApiKey ?? '';
     const randomNumber = req.secret?.randomNumber;
     let svgGuessText = '';
+    const gameStatus = await getGameStatus(`${supabaseApiKey}`, gameId[0]);
 
     const body: FrameRequest = await req.json();
 
     const { isValid, message } = await getFrameMessage(body, { neynarApiKey: `${apiKey}`});
 
-    if (isValid) {
+    if (!req.queries?.play && gameStatus[0].active && isValid) {
         evmAccount = message.interactor.verified_accounts[0];
         username = message.raw.action.interactor.username ?? `fc_id:${message.raw.action.interactor.fid}`;
         // @ts-ignore
@@ -93,7 +94,10 @@ async function getResponse(req: Request): Promise<Response> {
                 await updatePlayerCount(`${supabaseApiKey}`, gameId[0]);
             }
             // @ts-ignore
-            await insertGuess(`${supabaseApiKey}`, username, svgGuessText, isWinner);
+            await insertGuess(`${supabaseApiKey}`, username, svgGuessText, isWinner, gameId[0]);
+            if (isWinner) {
+                await updateGameStatus(`${supabaseApiKey}`, gameId[0], false);
+            }
         }
     }
     const frameMetadata = getFrameMetadata({
@@ -106,7 +110,7 @@ async function getResponse(req: Request): Promise<Response> {
             },
         ],
         image: [`${imageRender}`],
-        post_url: BASE_URL + req.path + `?key=${secret[0]}`,
+        post_url: BASE_URL + req.path + `?key=${secret[0]}&gameId=${gameId[0]}`,
         input: { text: answer },
     });
 
@@ -125,7 +129,6 @@ async function getResponse(req: Request): Promise<Response> {
         { headers: { 'Content-Type': 'text/html; charset=UTF-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=86400' } }
     );
 }
-
 
 async function POST(req: any): Promise<Response> {
     return getResponse(req);

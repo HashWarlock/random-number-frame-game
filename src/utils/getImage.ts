@@ -66,7 +66,7 @@ export async function getGuessHistorySVG(req: Request): Promise<Response> {
     const guessText = guess.guess;
     const guessTime = guess.created_at.slice(0,5);
     const isWinner = guess.is_winner;
-    svg += `\t\t<tspan x="${historyXCoordinate}" y="${(latestYCoordinateMultiplier * yCoordinateIncrement) + historyYCoordinate}">${guessTime}</tspan> <tspan fill="pink"> ${username}</tspan><tspan> ${guessText}</tspan>\n`
+    svg += `\t\t<tspan x="${historyXCoordinate}" y="${(latestYCoordinateMultiplier * yCoordinateIncrement) + historyYCoordinate}">${guessTime}</tspan> <tspan fill="pink"> @${username}</tspan><tspan> ${guessText}</tspan>\n`
     if (isWinner) {
       svg += `${closingHistoryTag}\n<g id="warning">
         <rect width="1000" height="100" x="100" y="450" style="stroke:#cdfa50;stroke-width:5;stroke-opacity:1" />
