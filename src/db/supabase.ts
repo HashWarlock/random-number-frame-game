@@ -19,6 +19,27 @@ export async function insertGuess(supabaseApiKey: string, username: string, gues
   );
 }
 
+export async function insertNewGame(supabaseApiKey: string, username: string, key: string) {
+  const endTime = new Date();
+  const formatEndTime = formatToTime(endTime.getUTCHours()) + ":" + formatToTime(endTime.getUTCMinutes()) + ":" + formatToTime(endTime.getUTCSeconds());
+  console.log(formatEndTime);
+  const options = {
+    method: 'POST',
+    headers: {
+      'apikey': `${supabaseApiKey}`,
+      'Authorization': `Bearer ${supabaseApiKey}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: `{"active": ${true}, "created_at": "${formatEndTime}", "creator": "${username}", "key": "${key}"}`,
+  };
+
+  await fetch(
+    'https://hkmyqdjuazltuwcqkgnt.supabase.co/rest/v1/GuessANumberGames',
+    options
+  );
+}
+
 function formatToTime(time: number) {
   return ('0' + time).slice(-2);
 }
@@ -83,7 +104,25 @@ export async function getGameStatus(supabaseApiKey: unknown, gameId: string) {
   return gameStatusResponseJson;
 }
 
-export async function getGuessHistory(supabaseApiKey: unknown, gameId: string[] | string) {
+export async function getGameId(supabaseApiKey: unknown, key: string) {
+  const options = {
+    method: 'GET',
+    headers: {
+      'apikey': `${supabaseApiKey}`,
+      'Authorization': `Bearer ${supabaseApiKey}`,
+    },
+  };
+  const gameStatusResponse = await fetch(
+    `https://hkmyqdjuazltuwcqkgnt.supabase.co/rest/v1/GuessANumberGames?key=eq.${key}`,
+    options
+  );
+  // @ts-ignore
+  const gameStatusResponseJson = await gameStatusResponse.json();
+  console.log(gameStatusResponseJson);
+  return gameStatusResponseJson;
+}
+
+export async function getGuessHistory(supabaseApiKey: unknown, gameId: string) {
   const options = {
     method: 'GET',
     headers: {

@@ -70,7 +70,7 @@ export async function getGuessHistorySVG(req: Request): Promise<Response> {
     if (isWinner) {
       svg += `${closingHistoryTag}\n<g id="warning">
         <rect width="1000" height="100" x="100" y="450" style="stroke:#cdfa50;stroke-width:5;stroke-opacity:1" />
-        <text fill="${historyFontColor}" font-family="monospace" font-size="36" y="510" x="50%" text-anchor="middle">${gameStatus[0].player_count} joined the game and <tspan fill="pink">${username}</tspan> won.</text>
+        <text fill="${historyFontColor}" font-family="monospace" font-size="36" y="510" x="50%" text-anchor="middle">${gameStatus[0].player_count} joined the game and <tspan fill="pink">@${username}</tspan> won.</text>
         </g>
       </svg>`;
       console.log(svg);
