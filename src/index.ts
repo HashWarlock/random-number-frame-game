@@ -12,6 +12,7 @@ import {
     updatePlayerCount
 } from "./db/supabase";
 import {createNewGame} from "./utils/createNewGame";
+import {relayPayout} from "./aa/syndicate";
 
 const BASE_URL = 'https://frames.phatfn.xyz'
 
@@ -83,8 +84,7 @@ async function getGuessResponse(req: Request, message: FrameValidationData | und
                 svgGuessText = `${username} guessed NaN`;
             } else if (answerNum == Number(randomNumber)) {
                 svgGuessText = `guessed ${answerNum}. BINGO!`;
-                // TEST: Update to Account Address with Check After Fix
-                //await relayGas(`${syndicateAccount}`, `${evmAccount}`);
+                await relayPayout(`${syndicateAccount}`, `${evmAccount}`);
                 isWinner = true;
             } else { // @ts-ignore
                 if (answerNum > Number(randomNumber)) {
