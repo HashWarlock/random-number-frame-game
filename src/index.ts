@@ -28,7 +28,13 @@ async function GET(req: Request): Promise<Response> {
 
 async function getHomeFrame(req: Request): Promise<Response> {
     const secret = req.queries?.key ?? '';
-    const gameId = req.queries?.gameId ?? ''
+    let gameId = req.queries?.gameId;
+    if (!gameId) {
+        const supabaseApiKey = req.secret?.supabaseApiKey ?? '';
+        const newGameId = await getGameId(`${supabaseApiKey}`, secret[0]);
+        console.log(newGameId[0])
+        gameId = [`${newGameId[0].id}`];
+    }
     let homeImage = '?home=true';
     const frameMetadata = getFrameMetadata({
         buttons: [
@@ -62,7 +68,7 @@ async function getGuessResponse(req: Request, message: FrameValidationData | und
     let answer: string | undefined = 'Guess a Number';
     const secret = req.queries?.key ?? '';
     const gameId = req.queries?.gameId;
-    const imageRender = `${BASE_URL}${req.path}?key=${secret[0]}&gameId=${gameId[0]}&getHistory=${Math.random()}`;
+    const imageRender = `${BASE_URL}${req.path}?key=${secret[0]}&gameId=${gameId[0]}&getHistory=${Math.random()}&validPlayer=true`;
     const syndicateAccount = req.secret?.syndicateAccount ?? '';
     const supabaseApiKey = req.secret?.supabaseApiKey ?? '';
     const randomNumber = req.secret?.randomNumber;
@@ -193,7 +199,7 @@ async function getCreateGame(req: Request, username: string): Promise<Response> 
             {
                 label: 'Deploy New Game',
                 action: 'link',
-                target: 'https://warpcast.com/~/compose?text=Deployed%20via%20@framehub&embeds[]=' + BASE_URL + req.path + `?key=${newKey}&gameId=${newGameId}`
+                target: 'https://warpcast.com/~/compose?text=Deployed%20via%20@framehub&embeds[]=' + BASE_URL + req.path + '?key=' + newKey + '&gameId=' + newGameId
             },
         ],
         image: BASE_URL + req.path + homeImage,
