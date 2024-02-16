@@ -2,7 +2,7 @@ import {FrameRequest, FrameValidationData} from '@coinbase/onchainkit'
 import { getFrameMetadata } from '@coinbase/onchainkit/dist/lib/core/getFrameMetadata'
 import { getFrameMessage } from '@coinbase/onchainkit/dist/lib/core/getFrameMessage'
 import {Request, Response, renderOpenGraph, route} from './frameSupport'
-import {homeFrameSVG, getGuessHistorySVG} from "./utils/getImage";
+import {homeFrameSVG, getGuessHistorySVG, getCreateYourNewGame} from "./utils/getImage";
 import {
     getGameId,
     getGameStatus,
@@ -21,6 +21,8 @@ async function GET(req: Request): Promise<Response> {
         return homeFrameSVG(req);
     } else if (req.queries?.getHistory){
         return getGuessHistorySVG(req);
+    } else if (req.queries?.createGame) {
+        return getCreateYourNewGame(req);
     } else {
         return getHomeFrame(req);
     }
@@ -39,7 +41,7 @@ async function getHomeFrame(req: Request): Promise<Response> {
     const frameMetadata = getFrameMetadata({
         buttons: [
             {
-                label: `Play`,
+                label: `🎮 Play`,
             },
         ],
         image: BASE_URL + req.path + homeImage,
@@ -68,7 +70,7 @@ async function getGuessResponse(req: Request, message: FrameValidationData | und
     let answer: string | undefined = 'Guess a Number';
     const secret = req.queries?.key ?? '';
     const gameId = req.queries?.gameId;
-    const imageRender = `${BASE_URL}${req.path}?key=${secret[0]}&gameId=${gameId[0]}&getHistory=${Math.random()}&validPlayer=true`;
+    let imageRender = `${BASE_URL}${req.path}?key=${secret[0]}&gameId=${gameId[0]}&getHistory=${Math.random()}`;
     const syndicateAccount = req.secret?.syndicateAccount ?? '';
     const supabaseApiKey = req.secret?.supabaseApiKey ?? '';
     const randomNumber = req.secret?.randomNumber;
@@ -82,46 +84,65 @@ async function getGuessResponse(req: Request, message: FrameValidationData | und
         const numberOfPlayerGuesses = await getPlayerGuessHistory(`${supabaseApiKey}`, gameId[0], username);
         answer = message.input;
         let isWinner = false;
-        if (message.following && message.liked && message.recasted) {
+        if ((message.following && message.liked && message.recasted && numberOfPlayerGuesses.length < 2) || numberOfPlayerGuesses.length < 1) {
             const answerNum = Number(answer);
             if (!evmAccount) {
-                svgGuessText = `${username} missing EVM Account`;
+                imageRender += `&invalidGuess=${username}%20missing%20verified%20EVM%20Account.`;
             } else if (isNaN(answerNum)) {
-                svgGuessText = `${username} guessed NaN`;
+                imageRender += `&invalidGuess=${username}%20guessed%20NaN.%20Guess%20again.`;
             } else if (answerNum == Number(randomNumber)) {
                 svgGuessText = `guessed ${answerNum}. BINGO!`;
                 await relayPayout(`${syndicateAccount}`, `${evmAccount}`);
                 isWinner = true;
+                await insertGuess(`${supabaseApiKey}`, username, svgGuessText, isWinner, gameId[0]);
             } else { // @ts-ignore
                 if (answerNum > Number(randomNumber)) {
                     svgGuessText = `guessed ${answerNum}, but too high.`
                 } else {
                     svgGuessText = `guessed ${answerNum}, but too low.`
                 }
+                await insertGuess(`${supabaseApiKey}`, username, svgGuessText, isWinner, gameId[0]);
             }
             if (numberOfPlayerGuesses.length < 1) {
                 await updatePlayerCount(`${supabaseApiKey}`, gameId[0]);
             }
-            // @ts-ignore
-            await insertGuess(`${supabaseApiKey}`, username, svgGuessText, isWinner, gameId[0]);
             if (isWinner) {
                 await updateGameStatus(`${supabaseApiKey}`, gameId[0], false);
             }
+        } else if (numberOfPlayerGuesses.length == 1) {
+            if (!(message.following && message.liked && message.recasted)) {
+                imageRender += `&following=${message.following}&liked=${message.liked}&recasted=${message.recasted}`;
+            }
+        } else if (numberOfPlayerGuesses.length > 1) {
+            imageRender += `&invalidGuess=${username}%20is%20out%20of%20guesses.`
         }
     }
-    const frameMetadata = getFrameMetadata({
-        buttons: [
-            {
-                label: 'Guess',
-            },
-            {
-                label: 'Create a Game',
-            },
-        ],
-        image: `${imageRender}`,
-        postUrl: BASE_URL + req.path + `?key=${secret[0]}&gameId=${gameId[0]}&getHistory=${Math.random()}`,
-        input: { text: answer },
-    });
+    let frameMetadata;
+    let buttons = [
+        {
+            label: '📜 Rules'
+        },
+        {
+            label: 'Create Your Game',
+        },
+    ];
+    if (gameStatus[0].active) {
+        buttons.push({
+            label: '🤔 Guess',
+        },);
+        frameMetadata = getFrameMetadata({
+            buttons: buttons,
+            image: `${imageRender}`,
+            postUrl: BASE_URL + req.path + `?key=${secret[0]}&gameId=${gameId[0]}&getHistory=${Math.random()}`,
+            input: { text: answer },
+        });
+    } else {
+        frameMetadata = getFrameMetadata({
+            buttons: buttons,
+            image: `${imageRender}`,
+            postUrl: BASE_URL + req.path + `?key=${secret[0]}&gameId=${gameId[0]}&getHistory=${Math.random()}`,
+        });
+    }
 
     return new Response(renderOpenGraph({
           title: BASE_URL + req.path,
@@ -142,21 +163,35 @@ async function getGuessResponse(req: Request, message: FrameValidationData | und
 async function getPlayHistory(req: Request, image: string): Promise<Response> {
     let answer: string | undefined = 'Guess a Number';
     const secret = req.queries?.key ?? '';
-    const gameId = req.queries?.gameId;
-
-    const frameMetadata = getFrameMetadata({
-        buttons: [
-            {
-                label: 'Guess',
-            },
-            {
-                label: 'Create a Game',
-            },
-        ],
-        image: `${image}`,
-        postUrl: BASE_URL + req.path + `?key=${secret[0]}&gameId=${gameId[0]}&getHistory=${Math.random()}`,
-        input: { text: answer },
-    });
+    const supabaseApiKey = req.secret?.supabaseApiKey ?? '';
+    const gameId = req.queries?.gameId ?? '';
+    const gameStatus = await getGameStatus(supabaseApiKey, gameId[0]);
+    let frameMetadata;
+    let buttons = [
+        {
+            label: '📜 Rules'
+        },
+        {
+            label: 'Create Your Game',
+        },
+    ];
+    if (gameStatus[0].active) {
+        buttons.push({
+            label: '🤔 Guess',
+        },);
+        frameMetadata = getFrameMetadata({
+            buttons: buttons,
+            image: `${image}`,
+            postUrl: BASE_URL + req.path + `?key=${secret[0]}&gameId=${gameId[0]}&getHistory=${Math.random()}`,
+            input: { text: answer },
+        });
+    } else {
+        frameMetadata = getFrameMetadata({
+            buttons: buttons,
+            image: `${image}`,
+            postUrl: BASE_URL + req.path + `?key=${secret[0]}&gameId=${gameId[0]}&getHistory=${Math.random()}`,
+        });
+    }
 
     return new Response(renderOpenGraph({
             title: BASE_URL + req.path,
@@ -190,20 +225,20 @@ async function getCreateGame(req: Request, username: string): Promise<Response> 
         // @ts-ignore
         newGameId = newGameIdResponse[0].id;
     }
-    let homeImage = '?home=true';
+    let createGameImage = '?createGame=true';
     const frameMetadata = getFrameMetadata({
         buttons: [
             {
                 label: '⬅️ Back',
             },
             {
-                label: 'Deploy New Game',
+                label: '🚀 Confirm',
                 action: 'link',
-                target: 'https://warpcast.com/~/compose?text=Deployed%20via%20@framehub&embeds[]=' + BASE_URL + req.path + '?key=' + newKey + '&gameId=' + newGameId
+                target: 'https://warpcast.com/~/compose?text=Deployed%20via%20FrameHub&embeds[]=farcaster://profiles/263870&embeds[]=' + BASE_URL + req.path + '?key=' + newKey + '&gameId=' + newGameId
             },
         ],
-        image: BASE_URL + req.path + homeImage,
-        postUrl: BASE_URL + req.path + `?key=${secret[0]}&gameId=${gameId[0]}&createGame=${Math.random()}`,
+        image: BASE_URL + req.path + createGameImage,
+        postUrl: BASE_URL + req.path + `?key=${secret[0]}&gameId=${gameId[0]}&back=${Math.random()}`,
     });
 
     return new Response(renderOpenGraph({
@@ -212,7 +247,7 @@ async function getCreateGame(req: Request, username: string): Promise<Response> 
           openGraph: {
               title: BASE_URL + req.path,
               description: 'FrameHub',
-              images: [BASE_URL + req.path + homeImage],
+              images: [BASE_URL + req.path + createGameImage],
           },
           other: {
               ...frameMetadata,
@@ -224,24 +259,35 @@ async function getCreateGame(req: Request, username: string): Promise<Response> 
 async function POST(req: any): Promise<Response> {
     const secret = req.queries?.key ?? '';
     const gameId = req.queries?.gameId;
-    const image = `${BASE_URL}${req.path}?key=${secret[0]}&gameId=${gameId[0]}&getHistory=${Math.random()}`;
+    let image = `${BASE_URL}${req.path}?key=${secret[0]}&gameId=${gameId[0]}&getHistory=${Math.random()}`;
     if (req.queries?.play) {
         return getPlayHistory(req, image);
     } else if (req.queries?.getHistory) {
         const body: FrameRequest = await req.json();
         const apiKey = req.secret?.apiKey ?? 'NEYNAR_API';
         const { isValid, message } = await getFrameMessage(body, { neynarApiKey: `${apiKey}`});
-        if (!isValid || !(message.following && message.liked && message.recasted)) {
+        if (!isValid) {
             return getPlayHistory(req, image);
         } else {
             const buttonIndex = message?.button;
             if (buttonIndex == 1) {
-                return getGuessResponse(req, message);
-            } else if (buttonIndex == 2) {
-                const username = message.raw.action.interactor.username ?? `fc_id:${message.raw.action.interactor.fid}`;
-                return getCreateGame(req, username);
-            } else {
+                if (!req.queries?.back) {
+                    image += '&rules=true';
+                }
                 return getPlayHistory(req, image);
+            } else {
+                if (buttonIndex == 2) {
+                    if (!(message.following && message.liked && message.recasted)) {
+                        image += `&following=${message.following}&liked=${message.liked}&recasted=${message.recasted}`;
+                        return getPlayHistory(req, image);
+                    }
+                    const username = message.raw.action.interactor.username ?? `fc_id:${message.raw.action.interactor.fid}`;
+                    return getCreateGame(req, username);
+                } else if (buttonIndex == 3) {
+                    return getGuessResponse(req, message);
+                } else {
+                    return getPlayHistory(req, image);
+                }
             }
         }
     } else {
