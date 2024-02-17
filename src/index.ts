@@ -1,8 +1,8 @@
 import {FrameRequest, FrameValidationData} from '@coinbase/onchainkit'
-import { getFrameMetadata } from '@coinbase/onchainkit/dist/lib/core/getFrameMetadata'
-import { getFrameMessage } from '@coinbase/onchainkit/dist/lib/core/getFrameMessage'
-import {Request, Response, renderOpenGraph, route} from './frameSupport'
-import {homeFrameSVG, getGuessHistorySVG, getCreateYourNewGame} from "./utils/getImage";
+import {getFrameMetadata} from '@coinbase/onchainkit/dist/lib/core/getFrameMetadata'
+import {getFrameMessage} from '@coinbase/onchainkit/dist/lib/core/getFrameMessage'
+import {renderOpenGraph, Request, Response, route} from './frameSupport'
+import {getCreateYourNewGame, getGuessHistorySVG, getScenarioNumber, homeFrameSVG, Scenario} from "./utils/getImage";
 import {
     getGameId,
     getGameStatus,
@@ -87,34 +87,36 @@ async function getGuessResponse(req: Request, message: FrameValidationData | und
         if ((message.following && message.liked && message.recasted && numberOfPlayerGuesses.length < 2) || numberOfPlayerGuesses.length < 1) {
             const answerNum = Number(answer);
             if (!evmAccount) {
-                imageRender += `&invalidGuess=${username}%20missing%20verified%20EVM%20Account.`;
+                imageRender += `&scenario=${getScenarioNumber(Scenario.Invalid)}&invalidGuess=${username}%20missing%20verified%20EVM%20Account.`;
             } else if (isNaN(answerNum)) {
-                imageRender += `&invalidGuess=${username}%20guessed%20NaN.%20Guess%20again.`;
+                imageRender += `&scenario=${getScenarioNumber(Scenario.Invalid)}&invalidGuess=${username}%20guessed%20NaN.%20Guess%20again.`;
             } else if (answerNum == Number(randomNumber)) {
                 svgGuessText = `guessed ${answerNum}. BINGO!`;
                 await relayPayout(`${syndicateAccount}`, `${evmAccount}`);
                 isWinner = true;
                 await insertGuess(`${supabaseApiKey}`, username, svgGuessText, isWinner, gameId[0]);
-            } else { // @ts-ignore
+            } else {
                 if (answerNum > Number(randomNumber)) {
                     svgGuessText = `guessed ${answerNum}, but too high.`
                 } else {
                     svgGuessText = `guessed ${answerNum}, but too low.`
                 }
+                imageRender += `&scenario=${getScenarioNumber(Scenario.GuessHistory)}`
                 await insertGuess(`${supabaseApiKey}`, username, svgGuessText, isWinner, gameId[0]);
             }
             if (numberOfPlayerGuesses.length < 1) {
                 await updatePlayerCount(`${supabaseApiKey}`, gameId[0]);
             }
             if (isWinner) {
+                imageRender += `&scenario=${getScenarioNumber(Scenario.GameOver)}`
                 await updateGameStatus(`${supabaseApiKey}`, gameId[0], false);
             }
         } else if (numberOfPlayerGuesses.length == 1) {
             if (!(message.following && message.liked && message.recasted)) {
-                imageRender += `&following=${message.following}&liked=${message.liked}&recasted=${message.recasted}`;
+                imageRender += `&scenario=${getScenarioNumber(Scenario.Tip)}&following=${message.following}&liked=${message.liked}&recasted=${message.recasted}`;
             }
         } else if (numberOfPlayerGuesses.length > 1) {
-            imageRender += `&invalidGuess=${username}%20is%20out%20of%20guesses.`
+            imageRender += `&scenario=${getScenarioNumber(Scenario.Invalid)}&invalidGuess=${username}%20is%20out%20of%20guesses.`
         }
     }
     let frameMetadata;
@@ -272,13 +274,13 @@ async function POST(req: any): Promise<Response> {
             const buttonIndex = message?.button;
             if (buttonIndex == 1) {
                 if (!req.queries?.back) {
-                    image += '&rules=true';
+                    image += '&rules=true&scenario=' + getScenarioNumber(Scenario.Rules);
                 }
                 return getPlayHistory(req, image);
             } else {
                 if (buttonIndex == 2) {
                     if (!(message.following && message.liked && message.recasted)) {
-                        image += `&following=${message.following}&liked=${message.liked}&recasted=${message.recasted}`;
+                        image += `&scenario=${getScenarioNumber(Scenario.Tip)}&following=${message.following}&liked=${message.liked}&recasted=${message.recasted}`;
                         return getPlayHistory(req, image);
                     }
                     const username = message.raw.action.interactor.username ?? `fc_id:${message.raw.action.interactor.fid}`;

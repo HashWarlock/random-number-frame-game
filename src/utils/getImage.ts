@@ -1,6 +1,48 @@
 import {Request, Response} from "../frameSupport";
 import {getGameStatus, getGuessHistory} from "../db/supabase";
 
+export enum Scenario {
+  GuessHistory,
+  Tip,
+  GameOver,
+  Rules,
+  Invalid,
+}
+
+export function getScenarioNumber(scenario: Scenario): number {
+  switch (scenario) {
+    case Scenario.GuessHistory:
+      return 0;
+    case Scenario.Tip:
+      return 1;
+    case Scenario.GameOver:
+      return 2;
+    case Scenario.Rules:
+      return 3;
+    case Scenario.Invalid:
+      return 4;
+    default:
+      return 0;
+  }
+}
+
+export function getScenario(scenarioNumber: number): Scenario {
+  switch (scenarioNumber) {
+    case 0:
+      return Scenario.GuessHistory;
+    case 1:
+      return Scenario.Tip;
+    case 2:
+      return Scenario.GameOver;
+    case 3:
+      return Scenario.Rules;
+    case 4:
+      return Scenario.Invalid;
+    default:
+      return Scenario.GuessHistory;
+  }
+}
+
 export async function homeFrameSVG(req: Request): Promise<Response> {
   const fontColor = '#000000';
   const bgColor = '#cdfa50';
@@ -100,8 +142,8 @@ function getGameOverTag(playerCount: string, username: string): string {
       <path id="Path-copy" fill="#000000" stroke="${outlineColor}" stroke-width="5" d="M 50 200 L 1150 200 L 1150 600 L 50 600 Z"/>
       <path id="path2" fill="#000000" stroke="${outlineColor}" stroke-width="5" d="M 70 280 L 1130 280 L 1130 580 L 70 580 Z"/>
       <text id="Tip" x="520" y="250" font-family="Courier" font-size="36" font-weight="700" fill="${historyFontColor}" >📝Tip</text>   
-      <text id="Game-over"><tspan x="100" y="350" font-family="Courier" font-size="36" font-weight="900" fill="${whiteFontColor}">🎇 Game Over!</text>
-      <text id="Winner"><tspan x="100" y="410" font-family="Courier" font-size="32" font-weight="700" fill="${historyFontColor}"></tspan><tspan fill="${whiteFontColor}" font-weight="900">1000</tspan>players joined the game. <tspan fill="pink" font-weight="900">@${username}</tspan> won.</tspan></text>
+      <text id="Game-over"><tspan x="100" y="350" font-family="Courier" font-size="36" font-weight="900" fill="${whiteFontColor}">🎇 Game Over!</tspan></text>
+      <text id="Winner"><tspan x="100" y="410" font-family="Courier" font-size="32" font-weight="700" fill="${historyFontColor}"><tspan fill="${whiteFontColor}" font-weight="900">${playerCount} </tspan>players joined the game. <tspan fill="pink" font-weight="900">@${username}</tspan> won.</tspan></text>
     </g>`;
 }
 
@@ -112,6 +154,7 @@ export async function getGuessHistorySVG(req: Request): Promise<Response> {
   const invalidGuess = req.queries?.invalidGuess;
   const gameStatus = await getGameStatus(supabaseApiKey, gameId[0]);
   const lastGuesses = await getGuessHistory(supabaseApiKey, gameId[0]);
+  const scenario = req.queries?.scenario ?? ['0'];
   let winnerUsername = '';
 
   const titleColor = '#000000';
@@ -142,20 +185,28 @@ export async function getGuessHistorySVG(req: Request): Promise<Response> {
     const isWinner = guess.is_winner;
     svg += `\t\t<tspan x="${historyXCoordinate}" y="${(latestYCoordinateMultiplier * yCoordinateIncrement) + historyYCoordinate}">${guessTime}</tspan> <tspan fill="pink"> @${username}</tspan><tspan> ${guessText}</tspan>\n`
     if (isWinner) {
-      winnerUsername = guess.username;
+      winnerUsername = username;
     }
     latestYCoordinateMultiplier++;
   }
   svg += closingHistoryTag;
-  if (!gameStatus[0].active) {
-    svg += getGameOverTag(gameStatus[0].player_count, winnerUsername);
-  } else if (rules) {
-    svg += getRulesTag();
-  } else if (req.queries?.following) {
-    svg += getTipTag(req);
-  } else if (invalidGuess) {
-    svg += getInvalidGuessTag(invalidGuess[0]);
+  switch (getScenario(Number(scenario[0]))) {
+    case Scenario.Tip:
+      svg += getTipTag(req);
+      break;
+    case Scenario.GameOver:
+      getGameOverTag(gameStatus[0].player_count, winnerUsername);
+      break;
+    case Scenario.Rules:
+      svg += getRulesTag();
+      break;
+    case Scenario.Invalid:
+      svg += getInvalidGuessTag(invalidGuess[0]);
+      break;
+    default:
+      (!gameStatus[0].active) ? svg += getGameOverTag(gameStatus[0].player_count, winnerUsername) : svg;
   }
+
   svg += closingSvgTag;
   console.log(svg);
   return new Response(svg, { headers: { 'Content-Type': 'image/svg+xml;' } });
