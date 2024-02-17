@@ -2,7 +2,7 @@ import {getRandomNumber} from "./getRandomNumber";
 import {insertNewGame} from "../db/supabase";
 
 export async function createNewGame(cid: string, key: string, supabaseApiKey: string, username: string){
-  const newRandomNumber = getRandomNumber(4096);
+  const newRandomNumber = getRandomNumber(1000);
 
   const options = {
     method: 'POST',
