@@ -226,11 +226,11 @@ export async function getCreateYourNewGame(req: Request): Promise<Response> {
         <text font-family="monospace" font-size="36" font-weight="700" fill="${createGameFontColor}">
           <tspan x="20" y="170">You are creating your new <tspan fill="${whiteFontColor}">Guess a Number Game</tspan></tspan>
           <tspan x="20" y="250" fill="${whiteFontColor}">📜 Your Game Rules</tspan></text>
-          <text id="rule-set" font-size="32" fill="${createGameFontColor}" font-family="monospace" font-weight="700">
-            <tspan x="70" y="320">🤔 Guess a number from <tspan fill="${whiteFontColor}" font-weight="900">1</tspan> to <tspan fill="${whiteFontColor}" font-weight="900">1000</tspan></tspan>
-            <tspan x="70" y="400">🆓 First guess is <tspan fill="${whiteFontColor}" font-weight="900">FREE</tspan></tspan>
-            <tspan x="70" y="480">🤝 Players should <tspan fill="${whiteFontColor}" font-weight="900">Follow</tspan> you, <tspan fill="${whiteFontColor}" font-weight="900">Like</tspan>, and <tspan fill="${whiteFontColor}" font-weight="900">Recast</tspan> to earn extra guess</tspan>
-            <tspan x="70" y="560">🥇 Winner gets <tspan fill="${whiteFontColor}" font-weight="900">0.01 USDC</tspan>, covered by <tspan fill="${whiteFontColor}" font-weight="900">FrameHub</tspan> / <tspan fill="${whiteFontColor}" font-weight="900">Phala Network</tspan></tspan>
+          <text id="rule-set" font-size="28" fill="${createGameFontColor}" font-family="monospace" font-weight="700">
+            <tspan x="50" y="320">🤔 Guess a number from <tspan fill="${whiteFontColor}" font-weight="900">1</tspan> to <tspan fill="${whiteFontColor}" font-weight="900">1000</tspan></tspan>
+            <tspan x="50" y="400">🆓 First guess is <tspan fill="${whiteFontColor}" font-weight="900">FREE</tspan></tspan>
+            <tspan x="50" y="480">🤝 Players should <tspan fill="${whiteFontColor}" font-weight="900">Follow</tspan> you, <tspan fill="${whiteFontColor}" font-weight="900">Like</tspan>, and <tspan fill="${whiteFontColor}" font-weight="900">Recast</tspan> to earn extra guess</tspan>
+            <tspan x="50" y="560">🥇 Winner gets <tspan fill="${whiteFontColor}" font-weight="900">0.01 USDC</tspan>, covered by <tspan fill="${whiteFontColor}" font-weight="900">FrameHub</tspan> / <tspan fill="${whiteFontColor}" font-weight="900">Phala Network</tspan></tspan>
         </text>
     </g>
   </svg>
